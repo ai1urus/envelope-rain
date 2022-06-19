@@ -4,6 +4,7 @@ import (
 	"envelope-rain/config"
 	"envelope-rain/database"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/go-redis/redis"
@@ -82,4 +83,27 @@ func TestRedisGetSet(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(result)
+}
+
+func TestRedisIncr(t *testing.T) {
+	InitRedis()
+	var wg sync.WaitGroup
+
+	wg.Add(5)
+	for i := 0; i < 5; i++ {
+		go func() {
+			for j := 0; j < 100; j++ {
+				fmt.Println(GetRedis().Incr("LastEid").Val())
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
+	fmt.Printf("LastEid is %v\n", GetRedis().Incr("LastEid").Val())
+}
+
+func TestFLoatMultiInt(t *testing.T) {
+	var ia int = 100
+	fmt.Println(float64(ia) * 0.1)
 }

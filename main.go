@@ -18,6 +18,7 @@ func main() {
 	// mysql warmup
 	// redis warmup
 	middleware.InitRedis()
+	util.InitEnvelopeGenerator()
 	// router
 	r.POST("/snatch", SnatchHandler)
 	r.POST("/open", OpenHandler)
@@ -65,7 +66,7 @@ func SnatchHandler(c *gin.Context) {
 	}
 
 	// 3. Chekc remain Envelope
-	envelope := util.GetEnvelope()
+	envelope := util.GetEnvelopeGenerator().GetEnvelope()
 	if envelope.Eid == -1 {
 		log.WithFields(log.Fields{
 			"uid": uid,
