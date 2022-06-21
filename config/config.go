@@ -30,6 +30,14 @@ type RedisConfig struct {
 	Password string
 }
 
+type EnvelopeConfig struct {
+	TotalMoney    int64
+	TotalEnvelope int64
+	MaxCount      int
+	MaxMoney      int
+	MinMoney      int
+}
+
 func InitConfig() {
 	cfg = viper.New()
 	cfg.SetConfigName("config")                                     // name of config file (without extension)
@@ -45,6 +53,17 @@ func InitConfig() {
 
 func GetCommonConfig() CommonConfig {
 	_cfg := CommonConfig{
+		TotalMoney:    cfg.GetInt64("envelope.total_money"),
+		TotalEnvelope: cfg.GetInt64("envelope.total_envelope"),
+		MaxCount:      cfg.GetInt("envelope.max_snatch"),
+		MaxMoney:      cfg.GetInt("envelope.max_money"),
+		MinMoney:      cfg.GetInt("envelope.min_money"),
+	}
+	return _cfg
+}
+
+func GetEnvelopeConfig() EnvelopeConfig {
+	_cfg := EnvelopeConfig{
 		TotalMoney:    cfg.GetInt64("envelope.total_money"),
 		TotalEnvelope: cfg.GetInt64("envelope.total_envelope"),
 		MaxCount:      cfg.GetInt("envelope.max_snatch"),
