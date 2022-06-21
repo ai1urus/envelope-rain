@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"envelope-rain/config"
 	"envelope-rain/database"
 	"fmt"
 	"sync"
@@ -13,11 +12,7 @@ import (
 // var ctx = context.Background()
 
 func TestRedisBasic(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     config.GetConfig().GetString("redis.address"),
-		Password: config.GetConfig().GetString("redis.password"), // no password set
-		DB:       0,                                              // use default DB
-	})
+	InitRedis()
 
 	err := rdb.Set("key", "value", 0).Err()
 	if err != nil {

@@ -17,9 +17,8 @@ func TestGetEnvelope(t *testing.T) {
 		go func() {
 			sum := 0
 			for j := 0; j < 1000; j++ {
-				envelope := GetEnvelopeGenerator().GetEnvelope()
-				// fmt.Println(envelope)
-				sum += int(envelope.Value)
+				_, value := GetEnvelopeGenerator().GetEnvelope()
+				sum += int(value)
 			}
 			fmt.Println(sum)
 			wg.Done()
@@ -27,7 +26,7 @@ func TestGetEnvelope(t *testing.T) {
 	}
 	wg.Wait()
 
-	fmt.Printf("left envelope is %v", eg.config.remainEnvelope)
-	fmt.Printf("left money is %v", eg.config.remainMoney)
+	fmt.Printf("left envelope is %v", eg.cfg.TotalEnvelope)
+	fmt.Printf("left money is %v", eg.cfg.TotalMoney)
 	fmt.Println("All done")
 }

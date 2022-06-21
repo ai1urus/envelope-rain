@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+func TestDBConnect(t *testing.T) {
+	InitDB()
+}
+
 func TestDBConfig(t *testing.T) {
 	user := &User{
 		Uid:       2,

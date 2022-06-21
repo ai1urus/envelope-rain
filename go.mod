@@ -1,6 +1,6 @@
 module envelope-rain
 
-go 1.18
+go 1.17
 
 require (
 	github.com/apache/rocketmq-client-go/v2 v2.1.0

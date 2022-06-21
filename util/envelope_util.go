@@ -2,10 +2,8 @@ package util
 
 import (
 	"envelope-rain/config"
-	"envelope-rain/database"
 	"envelope-rain/middleware"
 	"sync"
-	"time"
 
 	"math/rand"
 )
@@ -29,15 +27,8 @@ type IDGenerator struct {
 	buffer SegmentBuffer
 }
 
-type EnvelopeConfig struct {
-	remainMoney    int64
-	remainEnvelope int32
-	maxMoney       int32
-	minMoney       int32
-}
-
 type EnvelopeGenerator struct {
-	config         EnvelopeConfig
+	cfg            config.CommonConfig
 	currentCache   int
 	valueCache     [][]int64
 	valueCacheSize int
@@ -51,9 +42,7 @@ var eg *EnvelopeGenerator
 func (eg *EnvelopeGenerator) GenerateEnvelopeValue() {
 	nextCache := (eg.currentCache + 1) % 2
 	for i := 0; i < eg.valueCacheSize; i++ {
-		eg.valueCache[nextCache][i] = GetEnvelopeValue(eg.config.remainMoney, eg.config.minMoney, eg.config.maxMoney, eg.config.remainEnvelope)
-		// config.Set("envelope.total_money", remain_money-envelope.Value)
-		// config.Set("envelope.total_envelope", remain_envelope-1)
+		eg.valueCache[nextCache][i] = GetEnvelopeValue(eg.cfg.TotalMoney, int32(eg.cfg.MinMoney), int32(eg.cfg.MaxMoney), int32(eg.cfg.TotalEnvelope))
 	}
 	eg.nextReady = true
 }
@@ -65,15 +54,8 @@ func (eg *EnvelopeGenerator) ChangeCache() {
 }
 
 func InitEnvelopeGenerator() {
-	_config := config.GetConfig()
-
 	eg = &EnvelopeGenerator{
-		config: EnvelopeConfig{
-			remainMoney:    _config.GetInt64("envelope.total_money"),
-			remainEnvelope: _config.GetInt32("envelope.total_envelope"),
-			maxMoney:       _config.GetInt32("envelope.max_money"),
-			minMoney:       _config.GetInt32("envelope.min_money"),
-		},
+		cfg:            config.GetCommonConfig(),
 		currentCache:   0,
 		valueCacheSize: 20000,
 		valueCachePos:  0,
@@ -118,16 +100,12 @@ func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope 
 	return int64(money)
 }
 
-func (eg *EnvelopeGenerator) GetEnvelope() (envelope *database.Envelope) {
+func (eg *EnvelopeGenerator) GetEnvelope() (int64, int64) {
 	eg.valueCacheLock.Lock()
 	defer eg.valueCacheLock.Unlock()
 
-	envelope = &database.Envelope{
-		Eid:         middleware.GetRedis().Incr("LastEnvelopeID").Val(),
-		Value:       eg.valueCache[eg.currentCache][eg.valueCachePos],
-		Opened:      false,
-		Snatch_time: time.Now().Unix(),
-	}
+	eid := middleware.GetRedis().Incr("LastEnvelopeID").Val()
+	value := eg.valueCache[eg.currentCache][eg.valueCachePos]
 
 	eg.valueCachePos++
 
@@ -146,14 +124,8 @@ func (eg *EnvelopeGenerator) GetEnvelope() (envelope *database.Envelope) {
 		eg.ChangeCache()
 	}
 
-	eg.config.remainMoney -= envelope.Value
-	eg.config.remainEnvelope--
+	eg.cfg.TotalMoney -= value
+	eg.cfg.TotalEnvelope--
 
-	// if eg.config.remainMoney > 0 && eg.config.remainEnvelope > 0 {
-	// 	envelope.Eid, envelope.Value = GetEnvelopeValue(remain_money, min_money, max_money, remain_envelope)
-	// } else {
-	// 	envelope.Eid, envelope.Value = -1, 0
-	// }
-
-	return
+	return eid, value
 }

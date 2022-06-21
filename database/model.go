@@ -17,13 +17,15 @@ import (
 // }
 
 var db *gorm.DB
+var cfg config.DBConfig
 
-func initDB() {
+func InitDB() {
+	cfg = config.GetDBConfig()
 	dsn := fmt.Sprintf("%v:%v@tcp(%v)/%v?charset=utf8mb4&parseTime=True&loc=Local",
-		config.GetConfig().GetString("mysql.username"),
-		config.GetConfig().GetString("mysql.password"),
-		config.GetConfig().GetString("mysql.address"),
-		config.GetConfig().GetString("mysql.dbname"),
+		cfg.DBUsername,
+		cfg.DBPassword,
+		cfg.DBAddr,
+		cfg.DBName,
 	)
 	_db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 
@@ -37,8 +39,8 @@ func initDB() {
 }
 
 func GetDB() *gorm.DB {
-	if db == nil {
-		initDB()
-	}
+	// if db == nil {
+	// 	initDB()
+	// }
 	return db
 }

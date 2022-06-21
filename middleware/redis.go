@@ -10,6 +10,7 @@ import (
 )
 
 var rdb *redis.Client
+var cfg config.RedisConfig
 var once sync.Once
 
 func loadUserInfo() {
@@ -28,10 +29,11 @@ func loadUserInfo() {
 }
 
 func InitRedis() {
+	cfg = config.GetRedisConfig()
 	_rdb := redis.NewClient(&redis.Options{
-		Addr:     config.GetConfig().GetString("redis.address"),
-		Password: config.GetConfig().GetString("redis.password"), // no password set
-		DB:       0,                                              // use default DB
+		Addr:     cfg.Addr,
+		Password: cfg.Password, // no password set
+		DB:       0,            // use default DB
 	})
 
 	// init envelope id
