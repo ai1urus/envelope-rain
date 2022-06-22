@@ -5,8 +5,11 @@ import (
 	"envelope-rain/middleware"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"math/rand"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // type Segment struct {
@@ -29,13 +32,14 @@ import (
 // }
 
 type EnvelopeGenerator struct {
-	cfg            config.EnvelopeConfig // 共享变量：TotalMoney，TotalEnvelope，使用atomic
-	valueCacheId   int                   // 共享变量，使用？
-	valueCache     [][]int64             // 共享变量，更新时锁定单个Cache
-	valueCacheSize int                   // 固定变量
-	valueCachePos  int32                 // 共享变量，Generate函数修改
-	nextReady      bool                  // 共享变量，二值，用于判断Cache是否锁定
-	updateLock     int32                 // 锁，控制单个Cache的锁定
+	cfg              config.EnvelopeConfig // 共享变量：TotalMoney，TotalEnvelope，使用atomic
+	valueCacheId     int                   // 共享变量，使用？
+	valueCache       [][]int64             // 共享变量，更新时锁定单个Cache
+	valueCacheSize   int                   // 固定变量
+	valueCachePos    int32                 // 共享变量，Generate函数修改
+	nextReady        bool                  // 共享变量，二值，用于判断Cache是否锁定
+	updateRunning    int32                 // 锁，控制单个Cache的更新锁定
+	valueCacheRWLock sync.RWMutex          // 锁，控制单个Cache的读写锁定
 }
 
 var eg *EnvelopeGenerator
@@ -60,7 +64,7 @@ func (eg *EnvelopeGenerator) GenerateEnvelopeValueNoLock() {
 func (eg *EnvelopeGenerator) SwitchCacheNoLock() {
 	// 这两个操作需要在一步里完成
 	eg.valueCacheId = (eg.valueCacheId + 1) % 2
-	eg.valueCachePos = 0
+	eg.valueCachePos = -1
 	//
 	eg.nextReady = false
 }
@@ -70,7 +74,7 @@ func InitEnvelopeGenerator() {
 		cfg:            config.GetEnvelopeConfig(),
 		valueCacheId:   0,
 		valueCacheSize: 20000,
-		valueCachePos:  0,
+		valueCachePos:  -1,
 		nextReady:      false,
 	}
 
@@ -100,32 +104,54 @@ func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope 
 }
 
 func (eg *EnvelopeGenerator) GetEnvelope() (int64, int64) {
-	eid := middleware.GetRedis().Incr("LastEnvelopeID").Val()
-	pos := atomic.AddInt32(&eg.valueCachePos, 1)
+	// return middleware.GetRedis().Incr("LastEnvelopeID").Val(), 1
+	for true {
+		eg.valueCacheRWLock.RLock()
 
-	// 自旋锁判断pos是否合法
-	// 有没有可能切换之后上一个cache没有用完？
-	value := eg.valueCache[eg.valueCacheId][pos]
-
-	// 长度达到cacheSize之后需要执行切换 CAS 判断nextReady
-
-	// CAS锁, 更新cache, 更新时机为nextReady为false且
-	// 1. 当前cache使用超过10%
-	// 2. 当前cache pos大于等于cachesize
-	go func(int32) {
-		if pos >= int32(float64(eg.valueCacheSize)*0.1) {
-			if !eg.nextReady && atomic.CompareAndSwapInt32(&eg.updateLock, 0, 1) {
+		eid := middleware.GetRedis().Incr("LastEnvelopeID").Val()
+		// try
+		pos := atomic.AddInt32(&eg.valueCachePos, 1)
+		// CAS锁, 更新cache, 更新时机为nextReady为false且当前cache使用超过10%
+		if !eg.nextReady && (pos > int32(0.1*float64(eg.valueCacheSize)-1)) && atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1) {
+			go func() {
 				eg.GenerateEnvelopeValueNoLock()
-			}
-		} else if pos >= int32(eg.valueCacheSize) {
-			for !eg.nextReady {
-				if !eg.nextReady {
-					eg.GenerateEnvelopeValueNoLock()
-				}
-			}
-			eg.SwitchCacheNoLock()
+				eg.valueCacheRWLock.Lock()
+				eg.nextReady = true
+				eg.updateRunning = 0
+				eg.valueCacheRWLock.Unlock()
+			}()
 		}
-	}(pos)
 
-	return eid, value
+		pos = atomic.AddInt32(&eg.valueCachePos, 1)
+		if pos < int32(eg.valueCacheSize) {
+			value := eg.valueCache[eg.valueCacheId][pos]
+			eg.valueCacheRWLock.RUnlock()
+			return eid, value
+		}
+
+		eg.valueCacheRWLock.RUnlock()
+
+		time.Sleep(10)
+
+		eg.valueCacheRWLock.Lock()
+
+		pos = atomic.AddInt32(&eg.valueCachePos, 1)
+		if pos < int32(eg.valueCacheSize) {
+			value := eg.valueCache[eg.valueCacheId][pos]
+			eg.valueCacheRWLock.Unlock()
+			return eid, value
+		}
+
+		if eg.nextReady {
+			eg.SwitchCacheNoLock()
+		} else {
+			log.Error("Both two envelope buffer empty!")
+			eg.valueCacheRWLock.Unlock()
+			break
+		}
+
+		eg.valueCacheRWLock.Unlock()
+	}
+
+	return -1, -1
 }

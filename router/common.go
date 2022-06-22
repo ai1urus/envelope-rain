@@ -12,6 +12,7 @@ import (
 
 var rdb *redis.Client
 var cfg config.CommonConfig
+var eg *util.EnvelopeGenerator
 
 func InitService() {
 	fmt.Println("Init Config...")
@@ -27,6 +28,7 @@ func InitService() {
 	// Init EnvelopeGenerator
 	fmt.Println("Init Envelope Generator...")
 	util.InitEnvelopeGenerator()
+	eg = util.GetEnvelopeGenerator()
 
 	fmt.Println("Init Complete.")
 }

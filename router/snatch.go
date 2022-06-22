@@ -1,27 +1,25 @@
 package router
 
 import (
-	"envelope-rain/util"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 func SnatchHandler(c *gin.Context) {
 	uid, _ := c.GetPostForm("uid")
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
+	// log.SetFormatter(&log.TextFormatter{
+	// 	FullTimestamp: true,
+	// })
 
 	// logic start
 	// 1. 检查用户是否存在
 	cur_count, err := rdb.HGet(fmt.Sprintf("UserInfo:%v", uid), "cur_count").Int()
 	if err != nil {
-		log.WithFields(log.Fields{
-			"uid": uid,
-		}).Info("User not found")
+		// log.WithFields(log.Fields{
+		// 	"uid": uid,
+		// }).Info("User not found")
 
 		c.JSON(200, gin.H{
 			"code": 1,
@@ -31,13 +29,13 @@ func SnatchHandler(c *gin.Context) {
 	}
 
 	// 2. 检查已抢次数是否超出
-	fmt.Println(cfg)
+	// fmt.Println(cfg)
 	max_count := cfg.MaxCount
-	fmt.Printf("cur_count %v max_count %v\n", cur_count, max_count)
+	// fmt.Printf("cur_count %v max_count %v\n", cur_count, max_count)
 	if cur_count >= max_count {
-		log.WithFields(log.Fields{
-			"uid": uid,
-		}).Info("User snatch reached limit")
+		// log.WithFields(log.Fields{
+		// 	"uid": uid,
+		// }).Info("User snatch reached limit")
 
 		c.JSON(200, gin.H{
 			"code": 2,
@@ -47,13 +45,13 @@ func SnatchHandler(c *gin.Context) {
 	}
 
 	// 3. 检查剩余红包数量TODO
-	eid, value := util.GetEnvelopeGenerator().GetEnvelope()
+	eid, value := eg.GetEnvelope()
 	snatch_time := time.Now().Unix()
 
 	if eid == -1 {
-		log.WithFields(log.Fields{
-			"uid": uid,
-		}).Info("No envelope left")
+		// log.WithFields(log.Fields{
+		// 	"uid": uid,
+		// }).Info("No envelope left")
 
 		c.JSON(200, gin.H{
 			"code": 3,
@@ -77,11 +75,15 @@ func SnatchHandler(c *gin.Context) {
 	cur_count++
 	rdb.HSet(fmt.Sprintf("UserInfo:%v", uid), "cur_count", cur_count)
 
-	log.WithFields(log.Fields{
-		"uid": uid,
-	}).Info("User snatched")
+	// log.WithFields(log.Fields{
+	// 	"uid": uid,
+	// }).Info("User snatched")
+	// fmt.Println("User snatched")
+
+	// return
 
 	// logic end
+
 	c.JSON(200, gin.H{
 		"code": 0,
 		"msg":  "success",
