@@ -34,7 +34,7 @@ import (
 type EnvelopeGenerator struct {
 	cfg              config.EnvelopeConfig // 共享变量：TotalMoney，TotalEnvelope，使用atomic
 	valueCacheId     int                   // 共享变量，使用？
-	valueCache       [][]int64             // 共享变量，更新时锁定单个Cache
+	valueCache       [][]int32             // 共享变量，更新时锁定单个Cache
 	valueCacheSize   int                   // 固定变量
 	valueCachePos    int32                 // 共享变量，Generate函数修改
 	nextReady        bool                  // 共享变量，二值，用于判断Cache是否锁定
@@ -52,7 +52,7 @@ func (eg *EnvelopeGenerator) GenerateEnvelopeValueNoLock() {
 	for i := 0; i < eg.valueCacheSize; i++ {
 		value := GetEnvelopeValue(eg.cfg.TotalMoney, int32(eg.cfg.MinMoney), int32(eg.cfg.MaxMoney), int32(eg.cfg.TotalEnvelope))
 		eg.valueCache[nextCacheId][i] = value
-		eg.cfg.TotalMoney -= value
+		eg.cfg.TotalMoney -= int64(value)
 		eg.cfg.TotalEnvelope--
 		wg.Done()
 	}
@@ -78,9 +78,9 @@ func InitEnvelopeGenerator() {
 		nextReady:      false,
 	}
 
-	eg.valueCache = make([][]int64, 2)
-	eg.valueCache[0] = make([]int64, eg.valueCacheSize)
-	eg.valueCache[1] = make([]int64, eg.valueCacheSize)
+	eg.valueCache = make([][]int32, 2)
+	eg.valueCache[0] = make([]int32, eg.valueCacheSize)
+	eg.valueCache[1] = make([]int32, eg.valueCacheSize)
 
 	eg.GenerateEnvelopeValueNoLock()
 	eg.SwitchCacheNoLock()
@@ -91,19 +91,22 @@ func GetEnvelopeGenerator() *EnvelopeGenerator {
 	return eg
 }
 
-func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope int32) int64 {
-	if remain_envelope == 1 {
-		return Min(remain_money, max_money).(int64)
+func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope int32) int32 {
+	if remain_envelope <= 0 {
+		return 0
 	}
-	// 截尾正态分布，以mean_money为均值，截断范围min_money~max_money
+	if remain_envelope == 1 {
+		return Min(int32(remain_money), max_money)
+	}
+	// 截尾正态分布?以mean_money为均值，截断范围min_money~max_money
 	mean_money := int32(remain_money / int64(remain_envelope))
-	max_money = Min(max_money, 2*mean_money-min_money).(int32)
+	max_money = Min(max_money, 2*mean_money-min_money)
 	money := min_money + rand.Int31n(max_money-min_money+1)
 
-	return int64(money)
+	return money
 }
 
-func (eg *EnvelopeGenerator) GetEnvelope() (int64, int64) {
+func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 	// return middleware.GetRedis().Incr("LastEnvelopeID").Val(), 1
 	for true {
 		eg.valueCacheRWLock.RLock()

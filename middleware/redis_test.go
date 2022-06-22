@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"envelope-rain/config"
 	"envelope-rain/database"
 	"fmt"
 	"sync"
@@ -101,4 +102,23 @@ func TestRedisIncr(t *testing.T) {
 func TestFLoatMultiInt(t *testing.T) {
 	var ia int = 100
 	fmt.Println(float64(ia) * 0.1)
+}
+
+func TestIncrBy(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+	// rdb.Set("UserCount", 0, 1000000)
+	result, err := rdb.IncrBy("UserCount", 100).Result()
+	fmt.Println(result, err)
+}
+
+func TestSingleSet(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+	// rdb.Set("UserCount", 0, 1000000)
+	err := rdb.Set("LastEnvelopeId", "0", 0).Err()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(err)
 }

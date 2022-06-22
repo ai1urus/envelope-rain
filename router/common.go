@@ -14,7 +14,14 @@ var rdb *redis.Client
 var cfg config.CommonConfig
 var eg *util.EnvelopeGenerator
 
+// var server RainServer
+
+// type RainServer struct {
+// 	bloomFilter *bloom.BloomFilter
+// }
+
 func InitService() {
+
 	fmt.Println("Init Config...")
 	config.InitConfig()
 	cfg = config.GetCommonConfig()

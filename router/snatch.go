@@ -13,30 +13,23 @@ func SnatchHandler(c *gin.Context) {
 	// 	FullTimestamp: true,
 	// })
 
-	// logic start
-	// 1. 检查用户是否存在
-	cur_count, err := rdb.HGet(fmt.Sprintf("UserInfo:%v", uid), "cur_count").Int()
-	if err != nil {
-		// log.WithFields(log.Fields{
-		// 	"uid": uid,
-		// }).Info("User not found")
+	// 1. 【本地缓存】布隆过滤器判断是否已经达到MaxCount
 
+	// 2. 【Redis】获取CurCount
+	// rdb.IncrBy()
+	// rdb.IncrBy()
+	cur_count, err := rdb.HGet("UserInfo:"+uid, "cur_count").Int()
+	if err != nil {
 		c.JSON(200, gin.H{
 			"code": 1,
-			"msg":  "user not found",
+			"msg":  "Redis connect failed",
 		})
 		return
 	}
 
-	// 2. 检查已抢次数是否超出
-	// fmt.Println(cfg)
+	// 3. 判断是否达到MaxCount，如果达到则加入布隆过滤器
 	max_count := cfg.MaxCount
-	// fmt.Printf("cur_count %v max_count %v\n", cur_count, max_count)
 	if cur_count >= max_count {
-		// log.WithFields(log.Fields{
-		// 	"uid": uid,
-		// }).Info("User snatch reached limit")
-
 		c.JSON(200, gin.H{
 			"code": 2,
 			"msg":  "user snatch reached limit",
@@ -73,16 +66,11 @@ func SnatchHandler(c *gin.Context) {
 
 	// Redis Update UserInfo
 	cur_count++
-	rdb.HSet(fmt.Sprintf("UserInfo:%v", uid), "cur_count", cur_count)
+	rdb.HSet("UserInfo:"+uid, "cur_count", cur_count)
 
 	// log.WithFields(log.Fields{
 	// 	"uid": uid,
 	// }).Info("User snatched")
-	// fmt.Println("User snatched")
-
-	// return
-
-	// logic end
 
 	c.JSON(200, gin.H{
 		"code": 0,

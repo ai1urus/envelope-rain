@@ -40,13 +40,14 @@ type EnvelopeConfig struct {
 
 func InitConfig() {
 	cfg = viper.New()
-	cfg.SetConfigName("config")                                     // name of config file (without extension)
-	cfg.SetConfigType("yaml")                                       // REQUIRED if the config file does not have the extension in the name
-	cfg.AddConfigPath("/home/ubuntu/Project/envelope-rain/config/") // path to look for the config file in
+	cfg.SetConfigName("config") // name of config file (without extension)
+	cfg.SetConfigType("yaml")   // REQUIRED if the config file does not have the extension in the name
+	// cfg.AddConfigPath("/home/jian/Project/envelope-rain/config/") // path to look for the config file in
 	cfg.AddConfigPath("./config/")
-	cfg.AddConfigPath(".")    // optionally look for config in the working directory
-	err := cfg.ReadInConfig() // Find and read the config file
-	if err != nil {           // Handle errors reading the config file
+	cfg.AddConfigPath("../config") // optionally look for config in the working directory
+	cfg.AddConfigPath(".")         // optionally look for config in the working directory
+	err := cfg.ReadInConfig()      // Find and read the config file
+	if err != nil {                // Handle errors reading the config file
 		panic(fmt.Errorf("Fatal error config file: %w \n", err))
 	}
 }
