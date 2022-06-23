@@ -134,10 +134,12 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 
 		eg.valueCacheRWLock.RUnlock()
 
+		// 当前读到的pos超出限度，需要进行buffer切换
 		time.Sleep(10)
 
 		eg.valueCacheRWLock.Lock()
 
+		// 后续的pos超出范围的goroutine先获取一个新pos，以此判断buffer是否切换完成
 		pos = atomic.AddInt32(&eg.valueCachePos, 1)
 		if pos < int32(eg.valueCacheSize) {
 			value := eg.valueCache[eg.valueCacheId][pos]
@@ -145,6 +147,7 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 			return eid, value
 		}
 
+		// 第一个拿到写锁的goroutine执行buffer切换
 		if eg.nextReady {
 			eg.SwitchCacheNoLock()
 		} else {

@@ -4,6 +4,7 @@ envelope:
   min_money: 10
   max_money: 1000
   max_snatch: 5
+  probability: 50
 mysql:
   username: root
   password: 852196

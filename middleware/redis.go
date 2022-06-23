@@ -5,6 +5,7 @@ import (
 	"envelope-rain/database"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-redis/redis"
 )
@@ -15,27 +16,26 @@ var once sync.Once
 
 func loadUserInfo() {
 	var users []database.User
-	result := database.GetDB().Find(&users)
 
+	result := database.GetDB().Find(&users)
 	if result.Error != nil {
-		panic(result.Error)
+		panic(fmt.Sprintf("Load UserInfo from DB failed! error: %v", result.Error))
 	}
 
 	// var err error
-
+	pipe := rdb.Pipeline()
 	for _, user := range users {
-		// err = rdb.Set(fmt.Sprintf("UserCount:%v", user.Uid), user.Cur_count, time.Duration(10)*time.Minute).Err()
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// err = rdb.Set(fmt.Sprintf("UserBalance:%v", user.Uid), user.Amount, time.Duration(20)*time.Minute).Err()
-		// if err != nil {
-		// 	panic(err)
-		// }
-		rdb.HMSet(fmt.Sprintf("UserInfo:%v", user.Uid), map[string]interface{}{
-			"amount":    user.Amount,
-			"cur_count": user.Cur_count})
+		pipe.Set(fmt.Sprintf("UserCount:%v", user.Uid), user.Cur_count, time.Duration(10)*time.Minute)
+		pipe.Set(fmt.Sprintf("UserValue:%v", user.Uid), user.Amount, time.Duration(20)*time.Minute)
+		// rdb.HMSet(fmt.Sprintf("UserInfo:%v", user.Uid), map[string]interface{}{
+		// 	"amount":    user.Amount,
+		// 	"cur_count": user.Cur_count})
 	}
+	_, err := pipe.Exec()
+	if err != nil {
+		panic(fmt.Sprintf("Redis write UserInfo failed! error: %v", err))
+	}
+	// fmt.Printf("Redis init: %v", ret)
 }
 
 func CreateRedisClient() {
@@ -59,7 +59,7 @@ func InitRedis() {
 	})
 
 	// init envelope id
-	err := rdb.Set("LastEnvelopeId", "0", 0).Err()
+	err := rdb.Set("LastEnvelopeID", "0", 0).Err()
 
 	if err != nil {
 		panic(err)

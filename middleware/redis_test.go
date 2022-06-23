@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/go-redis/redis"
 )
@@ -121,4 +122,33 @@ func TestSingleSet(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(err)
+}
+
+func TestReadNotExist(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+	// rdb.Set("UserCount", 0, 1000000)
+	result, err := rdb.Get("UserInfo:999888999").Int()
+	if err == redis.Nil {
+		fmt.Println("Value Not exist!")
+	} else if err != nil {
+		panic(err)
+	}
+	fmt.Println(result)
+}
+
+func TestRedisInitForRed(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+
+	pipe := rdb.Pipeline()
+	for i := 0; i < 100010; i++ {
+		pipe.Set(fmt.Sprintf("User:%v:Snatch", i), 0, time.Duration(10)*time.Minute)
+	}
+	ret, err := pipe.Exec()
+	rdb.Set("TotalMoney", 1000000000000, 0)
+	rdb.Set("MaxCount", 5, 0)
+	rdb.Set("Probability", 100, 0)
+	rdb.Set("EnvelopeNum", 100000000, 0)
+	fmt.Println(ret, err)
 }

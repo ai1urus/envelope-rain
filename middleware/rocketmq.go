@@ -15,7 +15,7 @@ func InitProducer() {
 	p, err = rocketmq.NewProducer(
 		producer.WithNsResolver(primitive.NewPassthroughResolver([]string{"10.214.150.171:9876"})),
 		producer.WithRetry(2),
-		producer.WithNamespace("MQ_INST_8149062485579066312_2586445845"),
+		producer.WithNamespace("ENVELOPE"),
 		producer.WithCredentials(primitive.Credentials{
 			AccessKey: "rocketmq2",
 			SecretKey: "12345678",
