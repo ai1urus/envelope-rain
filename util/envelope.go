@@ -3,12 +3,14 @@ package util
 import (
 	"envelope-rain/config"
 	"envelope-rain/middleware"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"math/rand"
 
+	"github.com/go-redis/redis"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -40,6 +42,7 @@ type EnvelopeGenerator struct {
 	nextReady        bool                  // 共享变量，二值，用于判断Cache是否锁定
 	updateRunning    int32                 // 锁，控制单个Cache的更新锁定
 	valueCacheRWLock sync.RWMutex          // 锁，控制单个Cache的读写锁定
+	rdb              *redis.Client
 }
 
 var eg *EnvelopeGenerator
@@ -47,25 +50,24 @@ var eg *EnvelopeGenerator
 // 避免锁的使用, 生成一个Cache的Value数据
 func (eg *EnvelopeGenerator) GenerateEnvelopeValueNoLock() {
 	nextCacheId := (eg.valueCacheId + 1) % 2
-	var wg sync.WaitGroup
-	wg.Add(eg.valueCacheSize)
+	// var wg sync.WaitGroup
+	// wg.Add(eg.valueCacheSize)
 	for i := 0; i < eg.valueCacheSize; i++ {
 		value := GetEnvelopeValue(eg.cfg.TotalMoney, int32(eg.cfg.MinMoney), int32(eg.cfg.MaxMoney), int32(eg.cfg.TotalEnvelope))
 		eg.valueCache[nextCacheId][i] = value
 		eg.cfg.TotalMoney -= int64(value)
 		eg.cfg.TotalEnvelope--
-		wg.Done()
+		// wg.Done()
 	}
-	wg.Wait()
+	// wg.Wait()
 	eg.nextReady = true
 }
 
 // 切换Cache
 func (eg *EnvelopeGenerator) SwitchCacheNoLock() {
-	// 这两个操作需要在一步里完成
+	// fmt.Println("Change value cache")
 	eg.valueCacheId = (eg.valueCacheId + 1) % 2
 	eg.valueCachePos = -1
-	//
 	eg.nextReady = false
 }
 
@@ -76,6 +78,7 @@ func InitEnvelopeGenerator() {
 		valueCacheSize: 20000,
 		valueCachePos:  -1,
 		nextReady:      false,
+		rdb:            middleware.GetRedis(),
 	}
 
 	eg.valueCache = make([][]int32, 2)
@@ -83,8 +86,10 @@ func InitEnvelopeGenerator() {
 	eg.valueCache[1] = make([]int32, eg.valueCacheSize)
 
 	eg.GenerateEnvelopeValueNoLock()
+	eg.GetNotUsedMoneyJustForTest()
 	eg.SwitchCacheNoLock()
 	eg.GenerateEnvelopeValueNoLock()
+	eg.GetNotUsedMoneyJustForTest()
 }
 
 func GetEnvelopeGenerator() *EnvelopeGenerator {
@@ -108,14 +113,13 @@ func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope 
 
 func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 	// return middleware.GetRedis().Incr("LastEnvelopeID").Val(), 1
+
 	for true {
 		eg.valueCacheRWLock.RLock()
-
-		eid := middleware.GetRedis().Incr("LastEnvelopeID").Val()
 		// try
-		pos := atomic.AddInt32(&eg.valueCachePos, 1)
+		// pos := atomic.AddInt32(&eg.valueCachePos, 1)
 		// CAS锁, 更新cache, 更新时机为nextReady为false且当前cache使用超过10%
-		if !eg.nextReady && (pos > int32(0.1*float64(eg.valueCacheSize)-1)) && atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1) {
+		if !eg.nextReady && (atomic.LoadInt32(&eg.valueCachePos) > int32(0.1*float64(eg.valueCacheSize)-1)) && atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1) {
 			go func() {
 				eg.GenerateEnvelopeValueNoLock()
 				eg.valueCacheRWLock.Lock()
@@ -125,10 +129,11 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 			}()
 		}
 
-		pos = atomic.AddInt32(&eg.valueCachePos, 1)
+		pos := atomic.AddInt32(&eg.valueCachePos, 1)
 		if pos < int32(eg.valueCacheSize) {
 			value := eg.valueCache[eg.valueCacheId][pos]
 			eg.valueCacheRWLock.RUnlock()
+			eid := eg.rdb.Incr("LastEnvelopeID").Val()
 			return eid, value
 		}
 
@@ -144,6 +149,7 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 		if pos < int32(eg.valueCacheSize) {
 			value := eg.valueCache[eg.valueCacheId][pos]
 			eg.valueCacheRWLock.Unlock()
+			eid := eg.rdb.Incr("LastEnvelopeID").Val()
 			return eid, value
 		}
 
@@ -160,4 +166,56 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 	}
 
 	return -1, -1
+}
+
+func (eg *EnvelopeGenerator) GetNotUsedMoneyJustForTest() (count, value int64) {
+	// fmt.Println(eg.updateRunning)
+	// fmt.Println(atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1))
+
+	// for result := atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1); !result; result = atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1) {
+	// 	fmt.Println(result)
+	// }
+
+	if eg.valueCachePos < int32(eg.valueCacheSize) {
+		fmt.Println("统计A")
+		countA := int64(eg.valueCacheSize) - int64(0)
+		var valueA int32 = 0
+		for i := 0; i < eg.valueCacheSize; i++ {
+			valueA += eg.valueCache[eg.valueCacheId][i]
+		}
+		fmt.Printf("CountA: %v, ValueA: %v\n", countA, valueA)
+		count += countA
+		value += int64(valueA)
+	}
+	// return count, value
+	if eg.nextReady {
+		fmt.Println("统计B")
+		var tmpId int = (eg.valueCacheId + 1) % 2
+		countB := int64(eg.valueCacheSize)
+		var valueB int32 = 0
+		for i := 0; i < eg.valueCacheSize; i++ {
+			valueB += eg.valueCache[tmpId][i]
+		}
+		fmt.Printf("CountB: %v, ValueB: %v\n", countB, valueB)
+		count += countB
+		value += int64(valueB)
+	}
+	// if eg.valueCachePos < int32(eg.valueCacheSize) {
+	// 	fmt.Println("当前统计")
+	// 	fmt.Println(eg.valueCachePos)
+	// 	count += int64(eg.valueCacheSize) - int64(eg.valueCachePos) - 1
+	// 	for ; eg.valueCachePos+1 < int32(eg.valueCacheSize); eg.valueCachePos++ {
+	// 		value += int64(eg.valueCache[eg.valueCacheId][eg.valueCachePos+1])
+	// 	}
+	// }
+
+	// if eg.nextReady {
+	// 	eg.valueCacheId = (eg.valueCacheId + 1) % 2
+	// 	count += int64(eg.valueCacheSize)
+	// 	for i := 0; i < eg.valueCacheSize; i++ {
+	// 		value += int64(eg.valueCache[eg.valueCacheId][i])
+	// 	}
+	// }
+
+	return count, value
 }

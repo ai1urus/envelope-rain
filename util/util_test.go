@@ -1,34 +1,67 @@
 package util
 
 import (
+	"envelope-rain/config"
+	"envelope-rain/middleware"
+	"fmt"
 	"math/rand"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// func TestGetEnvelope(t *testing.T) {
-// 	middleware.InitRedis()
-// 	var wg sync.WaitGroup
-// 	wg.Add(5)
-// 	InitEnvelopeGenerator()
+func TestGetEnvelope(t *testing.T) {
+	config.InitConfig()
+	middleware.CreateRedisClient()
+	InitEnvelopeGenerator()
 
-// 	for i := 0; i < 5; i++ {
-// 		go func() {
-// 			sum := 0
-// 			for j := 0; j < 1000; j++ {
-// 				_, value := GetEnvelopeGenerator().GetEnvelope()
-// 				sum += int(value)
-// 			}
-// 			fmt.Println(sum)
-// 			wg.Done()
-// 		}()
-// 	}
-// 	wg.Wait()
+	var totalSum int64
+	eg := GetEnvelopeGenerator()
 
-// 	fmt.Printf("left envelope is %v", eg.cfg.TotalEnvelope)
-// 	fmt.Printf("left money is %v", eg.cfg.TotalMoney)
-// 	fmt.Println("All done")
-// }
+	// var wg sync.WaitGroup
+	// wg.Add(1)
+	// go func() {
+	// 	var sum int64 = 0
+	// 	for j := 0; j < 20000; j++ {
+	// 		_, value := eg.GetEnvelope()
+	// 		sum += int64(value)
+	// 	}
+	// 	fmt.Println(sum)
+	// 	atomic.AddInt64(&totalSum, int64(sum))
+	// 	wg.Done()
+	// }()
+	// wg.Wait()
+
+	var wg sync.WaitGroup
+	wg.Add(5)
+	for i := 0; i < 5; i++ {
+		go func() {
+			var sum int64 = 0
+			for j := 0; j < 4000; j++ {
+				_, value := eg.GetEnvelope()
+				sum += int64(value)
+			}
+			atomic.AddInt64(&totalSum, int64(sum))
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	eg.GetEnvelope()
+
+	count, value := eg.GetNotUsedMoneyJustForTest()
+	fmt.Println(count, value)
+
+	fmt.Println("sum", totalSum)
+	fmt.Printf("used money is %v\n", totalSum+value)
+	// fmt.Printf("left money is %v\n", eg.cfg.TotalMoney)
+	fmt.Printf("expected used money is %v\n", config.GetCommonConfig().TotalMoney-eg.cfg.TotalMoney)
+
+	usedcount, _ := middleware.GetRedis().Get("LastEnvelopeID").Int64()
+	fmt.Printf("used envelope is %v\n", usedcount+count)
+	fmt.Printf("expected used envelope is %v\n", config.GetCommonConfig().TotalEnvelope-eg.cfg.TotalEnvelope)
+	fmt.Println("All done")
+}
 
 func BenchmarkRandom1(b *testing.B) {
 	rand.Seed(time.Now().Unix())
