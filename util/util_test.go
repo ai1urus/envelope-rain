@@ -38,7 +38,7 @@ func TestGetEnvelope(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		go func() {
 			var sum int64 = 0
-			for j := 0; j < 4000; j++ {
+			for j := 0; j < 45678; j++ {
 				_, value := eg.GetEnvelope()
 				sum += int64(value)
 			}
@@ -47,14 +47,10 @@ func TestGetEnvelope(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	eg.GetEnvelope()
 
-	count, value := eg.GetNotUsedMoneyJustForTest()
-	fmt.Println(count, value)
+	count, value := eg.JustForTestGetUsedEnvelope()
 
-	fmt.Println("sum", totalSum)
 	fmt.Printf("used money is %v\n", totalSum+value)
-	// fmt.Printf("left money is %v\n", eg.cfg.TotalMoney)
 	fmt.Printf("expected used money is %v\n", config.GetCommonConfig().TotalMoney-eg.cfg.TotalMoney)
 
 	usedcount, _ := middleware.GetRedis().Get("LastEnvelopeID").Int64()

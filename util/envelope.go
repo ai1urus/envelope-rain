@@ -86,10 +86,10 @@ func InitEnvelopeGenerator() {
 	eg.valueCache[1] = make([]int32, eg.valueCacheSize)
 
 	eg.GenerateEnvelopeValueNoLock()
-	eg.GetNotUsedMoneyJustForTest()
+	// eg.GetNotUsedMoneyJustForTest()
 	eg.SwitchCacheNoLock()
 	eg.GenerateEnvelopeValueNoLock()
-	eg.GetNotUsedMoneyJustForTest()
+	// eg.GetNotUsedMoneyJustForTest()
 }
 
 func GetEnvelopeGenerator() *EnvelopeGenerator {
@@ -168,54 +168,30 @@ func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
 	return -1, -1
 }
 
-func (eg *EnvelopeGenerator) GetNotUsedMoneyJustForTest() (count, value int64) {
-	// fmt.Println(eg.updateRunning)
-	// fmt.Println(atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1))
-
-	// for result := atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1); !result; result = atomic.CompareAndSwapInt32(&eg.updateRunning, 0, 1) {
-	// 	fmt.Println(result)
-	// }
-
+func (eg *EnvelopeGenerator) JustForTestGetUsedEnvelope() (count, value int64) {
 	if eg.valueCachePos < int32(eg.valueCacheSize) {
-		fmt.Println("统计A")
-		countA := int64(eg.valueCacheSize) - int64(0)
+		fmt.Println("")
+		countA := int64(eg.valueCacheSize) - int64(eg.valueCachePos) - 1
 		var valueA int32 = 0
-		for i := 0; i < eg.valueCacheSize; i++ {
+		for i := eg.valueCachePos + 1; i < int32(eg.valueCacheSize); i++ {
 			valueA += eg.valueCache[eg.valueCacheId][i]
 		}
-		fmt.Printf("CountA: %v, ValueA: %v\n", countA, valueA)
+		fmt.Printf("当前Buffer Count: %v, Value: %v\n", countA, valueA)
 		count += countA
 		value += int64(valueA)
 	}
 	// return count, value
 	if eg.nextReady {
-		fmt.Println("统计B")
 		var tmpId int = (eg.valueCacheId + 1) % 2
 		countB := int64(eg.valueCacheSize)
 		var valueB int32 = 0
 		for i := 0; i < eg.valueCacheSize; i++ {
 			valueB += eg.valueCache[tmpId][i]
 		}
-		fmt.Printf("CountB: %v, ValueB: %v\n", countB, valueB)
+		fmt.Printf("缓冲Buffer Count: %v, Value: %v\n", countB, valueB)
 		count += countB
 		value += int64(valueB)
 	}
-	// if eg.valueCachePos < int32(eg.valueCacheSize) {
-	// 	fmt.Println("当前统计")
-	// 	fmt.Println(eg.valueCachePos)
-	// 	count += int64(eg.valueCacheSize) - int64(eg.valueCachePos) - 1
-	// 	for ; eg.valueCachePos+1 < int32(eg.valueCacheSize); eg.valueCachePos++ {
-	// 		value += int64(eg.valueCache[eg.valueCacheId][eg.valueCachePos+1])
-	// 	}
-	// }
-
-	// if eg.nextReady {
-	// 	eg.valueCacheId = (eg.valueCacheId + 1) % 2
-	// 	count += int64(eg.valueCacheSize)
-	// 	for i := 0; i < eg.valueCacheSize; i++ {
-	// 		value += int64(eg.valueCache[eg.valueCacheId][i])
-	// 	}
-	// }
 
 	return count, value
 }
