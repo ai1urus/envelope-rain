@@ -19,10 +19,45 @@ var mqp rocketmq.Producer
 
 // var server RainServer
 var server APIServer
+var openHash string
 
 type APIServer struct {
 	sendall     bool
 	bloomFilter *bloom.BloomFilter
+}
+
+func GenerateOpenScript(rdb *redis.Client) string {
+	var openScript string = `
+	local uid = KEYS[1]
+	local eid = KEYS[2]
+	
+	local envelope = redis.call("HMGET", "EnvelopeInfo:" .. eid, "uid", "opened", "value")
+	
+	-- Ret 1 eid 不存在
+	if not envelope[1] then
+		return -1
+	end
+	
+	-- Ret 2 eid 与 uid 不匹配
+	if envelope[1] ~= uid then 
+		return -2
+	end
+	
+	-- Ret 3 envelope 已开启
+	if envelope[2] == "true" then
+		return -3
+	end
+	
+	-- Ret 0 成功打开
+	redis.call("HMSET", "EnvelopeInfo:"..uid, "opened", "true") 
+	return envelope[3]
+	`
+
+	_openHash, err := rdb.ScriptLoad(openScript).Result()
+	if err != nil {
+		panic(fmt.Sprintf("Open Script create failed: %v", err))
+	}
+	return _openHash
 }
 
 func InitService() {
@@ -38,6 +73,7 @@ func InitService() {
 	fmt.Println("Init Redis...")
 	middleware.InitRedis()
 	rdb = middleware.GetRedis()
+	openHash = GenerateOpenScript(rdb)
 	// Init Rocketmq
 	middleware.InitProducer()
 	mqp = middleware.GetProducer()

@@ -1,9 +1,11 @@
 package middleware
 
 import (
+	"encoding/json"
 	"envelope-rain/config"
 	"envelope-rain/database"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -151,4 +153,87 @@ func TestRedisInitForRed(t *testing.T) {
 	rdb.Set("Probability", 100, 0)
 	rdb.Set("EnvelopeNum", 100000000, 0)
 	fmt.Println(ret, err)
+}
+
+func TestLuaScript(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+
+	openenvelope := redis.NewScript(`
+	local eid = KEYS[1]
+	local uid = KEYS[2]
+	
+	local envelope = redis.call("HMGET", "EnvelopeInfo:" .. eid, "uid", "opened", "value")
+
+	-- Ret 1 eid 不存在
+	if not envelope[1] then
+		return -1
+	end
+	
+	-- Ret 2 eid 与 uid 不匹配
+	if envelope[1] ~= uid then 
+		return -2
+	end
+	
+	-- Ret 3 envelope 已开启
+	if envelope[2] == "true" then
+		return -3
+	end
+	
+	-- Ret 0 成功打开
+	redis.call("HMSET", "EnvelopeInfo:"..uid, "opened", "true") 
+	return envelope[3]
+	`)
+	var value int
+
+	result, err := openenvelope.Run(rdb, []string{"2", "2"}).Int()
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(result, value)
+}
+
+// type EnvelopeWriteJSON struct {
+// 	Uid string
+// 	Eid string
+// }
+
+func TestExportEnvelopeList(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+
+	// user_envelope := [][]string{}
+
+	jsonPath := "../wrk/envelopeList.json"
+	jsonFile, err := os.Create(jsonPath)
+	if err != nil {
+		panic(err)
+	}
+
+	defer jsonFile.Close()
+
+	encode := json.NewEncoder(jsonFile)
+
+	for i := 0; i < 100000; i++ {
+		result := rdb.SMembers(fmt.Sprintf("EnvelopeList:%v", i)).Val()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// if err != redis.Nil {
+		// 	fmt.Println(i, result)
+		// }
+		if len(result) > 0 {
+			fmt.Println(i, result)
+		}
+
+		for j := 0; j < len(result); j++ {
+			err = encode.Encode(map[string]interface{}{
+				"uid": i,
+				"eid": result[j],
+			})
+		}
+
+	}
 }
