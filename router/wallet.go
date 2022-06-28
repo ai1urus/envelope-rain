@@ -9,12 +9,11 @@ import (
 
 func WalletListHandler(c *gin.Context) {
 	uid, _ := c.GetPostForm("uid")
-	log.WithFields(log.Fields{
-		"uid": uid,
-	}).Info("User check wallet")
-	// log.Infof("query %s's wallet", uid)
+	// log.WithFields(log.Fields{
+	// 	"uid": uid,
+	// }).Info("User check wallet")
 
-	envelope_list, err := rdb.SMembers(fmt.Sprintf("EnvelopeList:%v", uid)).Result()
+	envelope_list, err := rdb.SMembers("EnvelopeList:" + uid).Result()
 	// 1. Chekc User exist
 	if err != nil || envelope_list == nil {
 		log.WithFields(log.Fields{
@@ -29,9 +28,9 @@ func WalletListHandler(c *gin.Context) {
 	}
 	// 2. Success
 	// Redis Get UserInfo
-	amount, _ := rdb.HGet(fmt.Sprintf("UserInfo:%v", uid), "amount").Result()
+	amount, _ := rdb.Get("UserValue:" + uid).Int()
 
-	envelopes := []gin.H{}
+	var envelopes []gin.H
 
 	for _, eid := range envelope_list {
 		_envelope, _ := rdb.HGetAll(fmt.Sprintf("EnvelopeInfo:%v", eid)).Result()

@@ -47,9 +47,9 @@ func SnatchHandler(c *gin.Context) {
 		return
 	} else if err != nil {
 		// Redis 连接失败, (可以添加MySQL逻辑继续提供服务?)
-		c.JSON(200, gin.H{
+		c.JSON(500, gin.H{
 			"code": 11,
-			"msg":  "Redis connect failed",
+			"msg":  "Service inavailabel",
 		})
 		return
 	}
@@ -122,7 +122,6 @@ func SnatchHandler(c *gin.Context) {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-
 	err = mqp.SendAsync(context.Background(),
 		func(ctx context.Context, result *primitive.SendResult, e error) {
 			if e != nil {
@@ -136,7 +135,6 @@ func SnatchHandler(c *gin.Context) {
 	if err != nil {
 		panic(fmt.Sprintf("send message error: %s\n", err))
 	}
-
 	wg.Wait()
 
 	c.JSON(200, gin.H{

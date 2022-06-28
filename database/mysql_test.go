@@ -1,8 +1,12 @@
 package database
 
 import (
+	"envelope-rain/config"
+	"errors"
 	"fmt"
 	"testing"
+
+	"gorm.io/gorm"
 )
 
 func TestDBConnect(t *testing.T) {
@@ -37,6 +41,63 @@ func TestDBUpdate(t *testing.T) {
 	GetDB().First(&result, 1)
 	fmt.Println(result[0].Amount)
 	// fmt.Println(result[0].Amount)
+}
+
+func TestDBGetOneNotExist(t *testing.T) {
+	config.InitConfig()
+	InitDB()
+	var envelope Envelope
+	result := db.First(&envelope, "1999")
+	fmt.Println("FUckyou")
+	fmt.Printf("test %v\n", envelope)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		fmt.Println("record not found")
+	}
+}
+
+func TestDBGetBatchNotExist(t *testing.T) {
+	config.InitConfig()
+	InitDB()
+	var envelope []*Envelope
+	result := db.Where("uid = ?", 1996).Find(&envelope)
+	fmt.Println("FUckyou")
+	fmt.Printf("test %v\n", envelope[0])
+	// gorm.err
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		fmt.Println("record not found")
+	}
+}
+
+func TestDBUpdateOne(t *testing.T) {
+	config.InitConfig()
+	InitDB()
+	var envelope Envelope
+	e := db.First(&Envelope{}, "3").Update("opened", true).Error
+	fmt.Println("FUckyou")
+	fmt.Printf("test %v\n", envelope)
+	if errors.Is(e, gorm.ErrRecordNotFound) {
+		fmt.Println("record not found")
+	}
+}
+
+func TestDBSelectOneRow(t *testing.T) {
+	config.InitConfig()
+	InitDB()
+	var envelope Envelope
+	result := db.Select("value").First(&envelope, 1)
+	fmt.Println("FUckyou")
+	fmt.Println(envelope)
+	fmt.Printf("test %v\n", result)
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		fmt.Println("record not found")
+	}
+}
+
+func TestDBUpdateRow(t *testing.T) {
+	config.InitConfig()
+	InitDB()
+	err := UpdateUserValue(1, 10)
+	fmt.Println(err)
 }
 
 // package main

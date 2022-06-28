@@ -5,7 +5,6 @@ import (
 	"envelope-rain/database"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/go-redis/redis"
 )
@@ -25,8 +24,8 @@ func loadUserInfo() {
 	// var err error
 	pipe := rdb.Pipeline()
 	for _, user := range users {
-		pipe.Set(fmt.Sprintf("UserCount:%v", user.Uid), user.Cur_count, time.Duration(10)*time.Minute)
-		pipe.Set(fmt.Sprintf("UserValue:%v", user.Uid), user.Amount, time.Duration(20)*time.Minute)
+		pipe.Set(fmt.Sprintf("UserCount:%v", user.Uid), user.Cur_count, 0)
+		pipe.Set(fmt.Sprintf("UserValue:%v", user.Uid), user.Amount, 0)
 		// rdb.HMSet(fmt.Sprintf("UserInfo:%v", user.Uid), map[string]interface{}{
 		// 	"amount":    user.Amount,
 		// 	"cur_count": user.Cur_count})

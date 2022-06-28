@@ -82,3 +82,26 @@ func BenchmarkRandom3(b *testing.B) {
 		ans += rand.Intn(100)
 	}
 }
+
+func BenchmarkGetEnvelope(b *testing.B) {
+	config.InitConfig()
+	middleware.CreateRedisClient()
+	InitEnvelopeGenerator()
+	eg := GetEnvelopeGenerator()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		eg.GetEnvelope()
+	}
+
+	// b.SetParallelism(10)
+	// b.RunParallel(func(p *testing.PB) {
+	// 	for p.Next() {
+	// 		eg.GetEnvelope()
+	// 	}
+	// })
+
+	// for j := 0; j < 100000; j++ {
+	// 	eg.GetEnvelope()
+	// }
+}
