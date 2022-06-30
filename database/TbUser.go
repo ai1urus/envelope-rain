@@ -35,3 +35,10 @@ func UpdateUserCount(uid int64) (e error) {
 	})
 	return
 }
+
+func GetUserAmount(uid int64) (amount int64, e error) {
+	var user User
+	e = db.Select("amount").First(&user, uid).Error
+	amount = user.Amount
+	return
+}
