@@ -54,6 +54,15 @@ func SnatchHandler(c *gin.Context) {
 		return
 	}
 
+	// 判断红包概率
+	if rand.Int()%100 > cfg.Probability {
+		c.JSON(200, gin.H{
+			"code": 23,
+			"msg":  "User not lucky",
+		})
+		return
+	}
+
 	// 3. 判断是否达到MaxCount，如果达到则加入布隆过滤器
 	cur_count, err = rdb.Incr("UserCount:" + uid).Result()
 	max_count := cfg.MaxCount
@@ -62,15 +71,6 @@ func SnatchHandler(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"code": 22,
 			"msg":  "User snatch reached limit",
-		})
-		return
-	}
-
-	// 判断红包概率
-	if rand.Int()%100 > cfg.Probability {
-		c.JSON(200, gin.H{
-			"code": 23,
-			"msg":  "User not lucky",
 		})
 		return
 	}
@@ -92,28 +92,12 @@ func SnatchHandler(c *gin.Context) {
 		return
 	}
 
-	// 5. Redis 插入红包
-	// rdb.HMSet(fmt.Sprintf("EnvelopeInfo:%v", eid), envelope)
-	rdb.HMSet(fmt.Sprintf("EnvelopeInfo:%v", eid), map[string]interface{}{
-		"uid":         uid,
-		"value":       value,
-		"opened":      false,
-		"snatch_time": snatch_time,
-	})
-
-	// Redis Update UserList
-	rdb.SAdd(fmt.Sprintf("EnvelopeList:%v", uid), eid)
-
-	// Redis Update UserInfo
-	// cur_count++
-	// rdb.HSet("UserInfo:"+uid, "cur_count", cur_count)
-
-	// log.WithFields(log.Fields{
-	// 	"uid": uid,
-	// }).Info("User snatched")
-
-	msg := primitive.NewMessage("Msg", []byte("INSERT_ENVELOPE"))
+	_eid := strconv.FormatInt(eid, 10)
+	msg := primitive.NewMessage("Msg", []byte("CREATE_ENVELOPE"))
+	// msg.WithShardingKey(_eid)
+	msg.WithKeys([]string{_eid})
 	msg.WithProperties(map[string]string{
+		"eid":         _eid,
 		"uid":         uid,
 		"value":       strconv.Itoa(int(value)),
 		"opened":      strconv.FormatBool(false),
@@ -136,6 +120,27 @@ func SnatchHandler(c *gin.Context) {
 		panic(fmt.Sprintf("send message error: %s\n", err))
 	}
 	wg.Wait()
+
+	// 5. Redis 插入红包
+	// rdb.HMSet(fmt.Sprintf("EnvelopeInfo:%v", eid), envelope)
+	rdb.HMSet(fmt.Sprintf("EnvelopeInfo:%v", eid), map[string]interface{}{
+		"uid":         uid,
+		"value":       value,
+		"opened":      false,
+		"snatch_time": snatch_time,
+	})
+	rdb.Expire(fmt.Sprintf("EnvelopeInfo:%v", eid), time.Duration(20)*time.Minute)
+
+	// Redis Update UserList
+	rdb.SAdd(fmt.Sprintf("EnvelopeList:%v", uid), eid)
+
+	// Redis Update UserInfo
+	// cur_count++
+	// rdb.HSet("UserInfo:"+uid, "cur_count", cur_count)
+
+	// log.WithFields(log.Fields{
+	// 	"uid": uid,
+	// }).Info("User snatched")
 
 	c.JSON(200, gin.H{
 		"code": 0,

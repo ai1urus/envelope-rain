@@ -83,8 +83,8 @@ func TestDBUpdateOne(t *testing.T) {
 func TestDBSelectOneRow(t *testing.T) {
 	config.InitConfig()
 	InitDB()
-	var envelope Envelope
-	result := db.Select("value").First(&envelope, 1)
+	var envelope User
+	result := db.Select("amount").First(&envelope, 1)
 	fmt.Println("FUckyou")
 	fmt.Println(envelope)
 	fmt.Printf("test %v\n", result)
@@ -99,6 +99,8 @@ func TestDBUpdateRow(t *testing.T) {
 	err := UpdateUserValue(1, 10)
 	fmt.Println(err)
 }
+
+// func TestDBGetUserAmount
 
 // package main
 
