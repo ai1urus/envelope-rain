@@ -84,3 +84,7 @@ func InitService() {
 
 	fmt.Println("Init Complete.")
 }
+
+func StopService() {
+	rdb.Close()
+}
