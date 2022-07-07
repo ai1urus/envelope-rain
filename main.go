@@ -28,4 +28,5 @@ func main() {
 	signal.Notify(quit, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
+	router.StopService()
 }

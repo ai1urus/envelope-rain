@@ -145,13 +145,13 @@ func TestRedisInitForGroup9(t *testing.T) {
 
 	pipe := rdb.Pipeline()
 	for i := 0; i < 100010; i++ {
-		pipe.Set(fmt.Sprintf("User:%v:Snatch", i), 0, time.Duration(10)*time.Minute)
+		pipe.Set(fmt.Sprintf("User:%v:Snatch", i), 0, 0)
 	}
 	ret, err := pipe.Exec()
-	rdb.Set("TotalMoney", 1000000000000, 0)
+	rdb.Set("TotalMoney", 10000000000, 0)
 	rdb.Set("MaxCount", 5, 0)
-	rdb.Set("Probability", 100, 0)
-	rdb.Set("EnvelopeNum", 100000000, 0)
+	rdb.Set("Probability", 50, 0)
+	rdb.Set("EnvelopeNum", 50000000, 0)
 	fmt.Println(ret, err)
 }
 
