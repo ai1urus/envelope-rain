@@ -41,9 +41,14 @@ func main() {
 			switch string(msgs[i].Body) {
 			case "CREATE_ENVELOPE":
 				// 查db是否存在
-				eid, _ := strconv.ParseInt(msgs[i].GetKeys(), 10, 64)
-				_, err := database.GetEnvelopeByEid(eid)
 				prop := msgs[i].GetProperties()
+				fmt.Printf("CREATE_ENVELOPE %v\n", msgs[i].GetKeys())
+				eid, err := strconv.ParseInt(prop["eid"], 10, 64)
+				if err != nil {
+					fmt.Println("eid parse failed")
+					continue
+				}
+				_, err = database.GetEnvelopeByEid(eid)
 
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					var uid, value, snatch_time int64
@@ -65,6 +70,7 @@ func main() {
 					database.UpdateUserCount(uid)
 				}
 			case "OPEN_ENVELOPE":
+				fmt.Printf("OPEN_ENVELOPE %v\n", msgs[i].GetKeys())
 				eid, _ := strconv.ParseInt(msgs[i].GetKeys(), 10, 64)
 				envelope, err := database.GetEnvelopeByEid(eid)
 				// prop := msgs[i].GetProperties()

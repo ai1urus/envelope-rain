@@ -3,6 +3,9 @@ package main
 import (
 	"envelope-rain/router"
 	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,4 +23,9 @@ func main() {
 	r.POST("/get_wallet_list", router.WalletListHandler)
 
 	r.Run()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
 }
