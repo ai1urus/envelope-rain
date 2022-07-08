@@ -1,11 +1,9 @@
 package router
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/apache/rocketmq-client-go/v2/primitive"
@@ -49,7 +47,7 @@ func SnatchHandler(c *gin.Context) {
 		// Redis 连接失败, (可以添加MySQL逻辑继续提供服务?)
 		c.JSON(500, gin.H{
 			"code": 11,
-			"msg":  "Service inavailabel",
+			"msg":  "Service inavailable",
 		})
 		return
 	}
@@ -104,22 +102,31 @@ func SnatchHandler(c *gin.Context) {
 		"snatch_time": strconv.FormatInt(snatch_time, 10),
 	})
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	err = mqp.SendAsync(context.Background(),
-		func(ctx context.Context, result *primitive.SendResult, e error) {
-			if e != nil {
-				panic(fmt.Sprintf("receive message error: %s\n", err))
-			} else {
-				// fmt.Printf("send message success: result=%s\n", result.String())
-			}
-			wg.Done()
-		}, msg)
+	// _, err = mqp.SendSync(context.Background(), msg)
+	// if err != nil {
+	// 	// 写 MQ 失败，Count回退？
+	// 	c.JSON(500, gin.H{
+	// 		"code": 11,
+	// 		"msg":  "Service inavailable",
+	// 	})
+	// 	return
+	// }
+	// var wg sync.WaitGroup
+	// wg.Add(1)
+	// err = mqp.SendAsync(context.Background(),
+	// 	func(ctx context.Context, result *primitive.SendResult, e error) {
+	// 		if e != nil {
+	// 			panic(fmt.Sprintf("receive message error: %s\n", err))
+	// 		} else {
+	// 			// fmt.Printf("send message success: result=%s\n", result.String())
+	// 		}
+	// 		wg.Done()
+	// 	}, msg)
 
-	if err != nil {
-		panic(fmt.Sprintf("send message error: %s\n", err))
-	}
-	wg.Wait()
+	// if err != nil {
+	// 	panic(fmt.Sprintf("send message error: %s\n", err))
+	// }
+	// wg.Wait()
 
 	// 5. Redis 插入红包
 	// rdb.HMSet(fmt.Sprintf("EnvelopeInfo:%v", eid), envelope)

@@ -10,6 +10,7 @@ import (
 )
 
 func TestDBConnect(t *testing.T) {
+	config.InitConfig()
 	InitDB()
 }
 

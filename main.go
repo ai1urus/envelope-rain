@@ -2,6 +2,7 @@ package main
 
 import (
 	"envelope-rain/router"
+	"io"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -12,6 +13,11 @@ import (
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
+	gin.DisableConsoleColor()
+
+	f, _ := os.Create("gin.log")
+	gin.DefaultWriter = io.MultiWriter(f)
+
 	r := gin.Default()
 	router.InitService()
 	// go func() {
