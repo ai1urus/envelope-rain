@@ -44,12 +44,13 @@ func GenerateOpenScript(rdb *redis.Client) string {
 	end
 	
 	-- Ret 3 envelope 已开启
-	if envelope[2] == "true" then
+	if envelope[2] == "1" then
 		return -3
 	end
 	
 	-- Ret 0 成功打开
-	redis.call("HMSET", "EnvelopeInfo:"..uid, "opened", "true") 
+	redis.call("HMSET", "EnvelopeInfo:"..eid, "opened", "1") 
+	redis.call("INCRBY", "UserValue:"..uid, envelope[3])
 	return envelope[3]
 	`
 
@@ -75,8 +76,8 @@ func InitService() {
 	rdb = middleware.GetRedis()
 	openHash = GenerateOpenScript(rdb)
 	// Init Rocketmq
-	middleware.InitProducer()
-	mqp = middleware.GetProducer()
+	// middleware.InitProducer()
+	// mqp = middleware.GetProducer()
 	// Init EnvelopeGenerator
 	fmt.Println("Init Envelope Generator...")
 	util.InitEnvelopeGenerator()

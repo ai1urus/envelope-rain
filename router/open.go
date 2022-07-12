@@ -1,15 +1,12 @@
 package router
 
 import (
-	"context"
 	"envelope-rain/database"
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
-	"github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -95,10 +92,10 @@ func OpenHandler(c *gin.Context) {
 		})
 		return
 	case -3:
-		log.WithFields(log.Fields{
-			"uid": uid,
-			"eid": envelope_id,
-		}).Info("Envelope already opened")
+		// log.WithFields(log.Fields{
+		// 	"uid": uid,
+		// 	"eid": envelope_id,
+		// }).Info("Envelope already opened")
 
 		c.JSON(200, gin.H{
 			"code": 3,
@@ -107,37 +104,46 @@ func OpenHandler(c *gin.Context) {
 		return
 	default:
 		// 成功打开红包，用户余额增加
-		msg := primitive.NewMessage("Msg", []byte("OPEN_ENVELOPE"))
-		msg.WithKeys([]string{envelope_id})
-		msg.WithProperties(map[string]string{
-			"eid": envelope_id,
-			"uid": uid,
-		})
+		// msg := primitive.NewMessage("Msg", []byte("OPEN_ENVELOPE"))
+		// msg.WithKeys([]string{envelope_id})
+		// msg.WithProperties(map[string]string{
+		// 	"eid": envelope_id,
+		// 	"uid": uid,
+		// })
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		err = mqp.SendAsync(context.Background(),
-			func(ctx context.Context, result *primitive.SendResult, e error) {
-				if e != nil {
-					panic(fmt.Sprintf("receive message error: %s\n", err))
-				} else {
-					// fmt.Printf("send message success: result=%s\n", result.String())
-				}
-				wg.Done()
-			}, msg)
-		if err != nil {
-			panic(fmt.Sprintf("send message error: %s\n", err))
-		}
-		wg.Wait()
+		// _, err = mqp.SendSync(context.Background(), msg)
+		// if err != nil {
+		// 	// 写 MQ 失败，Count回退？
+		// 	c.JSON(500, gin.H{
+		// 		"code": 11,
+		// 		"msg":  "Service inavailable",
+		// 	})
+		// 	return
+		// }
+		// var wg sync.WaitGroup
+		// wg.Add(1)
+		// err = mqp.SendAsync(context.Background(),
+		// 	func(ctx context.Context, result *primitive.SendResult, e error) {
+		// 		if e != nil {
+		// 			panic(fmt.Sprintf("receive message error: %s\n", err))
+		// 		} else {
+		// 			// fmt.Printf("send message success: result=%s\n", result.String())
+		// 		}
+		// 		wg.Done()
+		// 	}, msg)
+		// if err != nil {
+		// 	panic(fmt.Sprintf("send message error: %s\n", err))
+		// }
+		// wg.Wait()
 
-		_, err = rdb.IncrBy("UserValue:"+uid, int64(result)).Result()
-		if err != nil {
-			c.JSON(500, gin.H{
-				"code": 11,
-				"msg":  "Service unavailable",
-			})
-			return
-		}
+		// _, err = rdb.IncrBy("UserValue:"+uid, int64(result)).Result()
+		// if err != nil {
+		// 	c.JSON(500, gin.H{
+		// 		"code": 11,
+		// 		"msg":  "Service unavailable",
+		// 	})
+		// 	return
+		// }
 		// log.WithFields(log.Fields{
 		// 	"uid": uid,
 		// 	"eid": envelope_id,

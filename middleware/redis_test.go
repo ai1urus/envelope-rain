@@ -1,11 +1,14 @@
 package middleware
 
 import (
+	"bufio"
 	"encoding/json"
 	"envelope-rain/config"
 	"envelope-rain/database"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -215,6 +218,63 @@ func TestLuaScript(t *testing.T) {
 // 	Uid string
 // 	Eid string
 // }
+type EnvelopeList struct {
+	Eid string
+	Uid int64
+}
+
+func TestImportEnvelopeList(t *testing.T) {
+	config.InitConfig()
+	CreateRedisClient()
+
+	// user_envelope := [][]string{}
+
+	outPath := "../openList.json"
+	outFile, err := os.Create(outPath)
+	encode := json.NewEncoder(outFile)
+
+	jsonPath := "../envelopeList.json"
+	jsonFile, err := os.OpenFile(jsonPath, os.O_RDWR, 0666)
+	if err != nil {
+		panic(err)
+	}
+	defer jsonFile.Close()
+
+	pipe := rdb.Pipeline()
+	buf := bufio.NewReader(jsonFile)
+	for i := 0; i < 300000; i++ {
+		line, err := buf.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("File read ok!")
+				break
+			} else {
+				fmt.Println("Read file error!", err)
+				return
+			}
+		}
+
+		line = strings.TrimSpace(line)
+		var info EnvelopeList
+		json.Unmarshal([]byte(line), &info)
+		// fmt.Println(info)
+		pipe.HMSet(fmt.Sprintf("EnvelopeInfo:%v", info.Eid), map[string]interface{}{
+			"uid":         info.Uid,
+			"value":       0,
+			"opened":      false,
+			"snatch_time": 0,
+		})
+		pipe.SAdd(fmt.Sprintf("EnvelopeList:%v", info.Uid), info.Eid)
+		err = encode.Encode(map[string]interface{}{
+			"eid": info.Eid,
+			"uid": fmt.Sprintf("%v", info.Uid),
+		})
+	}
+
+	pipe.Exec()
+	pipe.Close()
+	rdb.Close()
+}
 
 func TestExportEnvelopeList(t *testing.T) {
 	config.InitConfig()
@@ -222,7 +282,7 @@ func TestExportEnvelopeList(t *testing.T) {
 
 	// user_envelope := [][]string{}
 
-	jsonPath := "../wrk/envelopeList.json"
+	jsonPath := "../envelopeList.json"
 	jsonFile, err := os.Create(jsonPath)
 	if err != nil {
 		panic(err)
@@ -252,6 +312,7 @@ func TestExportEnvelopeList(t *testing.T) {
 		}
 
 	}
+	rdb.Close()
 }
 
 // func TestExportGroup7List(t *testing.T) {

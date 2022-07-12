@@ -35,6 +35,13 @@ func InitDB() {
 		db = _db
 		db.AutoMigrate(&User{})
 		db.AutoMigrate(&Envelope{})
+		// db.AutoMigrate(&config.CommonConfig{})
+
+		// var checkConfig config.CommonConfig
+		// err := db.First(&checkConfig).Error
+		// if errors.Is(err, gorm.ErrRecordNotFound) {
+		// 	db.Create(config.GetCommonConfig())
+		// }
 	}
 }
 

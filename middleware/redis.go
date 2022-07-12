@@ -37,6 +37,11 @@ func loadUserInfo() {
 	// fmt.Printf("Redis init: %v", ret)
 }
 
+func loadEnvelopeInfo() {
+	rdb.SetNX("TotalMoney", config.GetCommonConfig().TotalMoney, 0)
+	rdb.SetNX("TotalEnvelope", config.GetCommonConfig().TotalEnvelope, 0)
+}
+
 func CreateRedisClient() {
 	cfg = config.GetRedisConfig()
 	rdb = redis.NewClient(&redis.Options{
@@ -65,6 +70,7 @@ func InitRedis() {
 	}
 
 	loadUserInfo()
+	loadEnvelopeInfo()
 }
 
 func GetRedis() *redis.Client {

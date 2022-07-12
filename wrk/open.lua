@@ -7,14 +7,14 @@ math.randomseed(os.time())
 
 function init(args) 
     t = {}
-    for line in io.lines ('envelopeList.json') do
+    for line in io.lines ('../openList.json') do
         local l = json.decode(line)
         table.insert(t, l)
         -- print(t['uid'])
         -- print(t['eid'])
         -- print(line)
     end
-    -- print(#t)
+    print(#t)
 end
 
 function request()
