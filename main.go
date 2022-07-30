@@ -3,6 +3,8 @@ package main
 import (
 	"envelope-rain/router"
 	"io"
+	"log"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -20,9 +22,9 @@ func main() {
 
 	r := gin.Default()
 	router.InitService()
-	// go func() {
-	// 	log.Println(http.ListenAndServe(":6060", nil))
-	// }()
+	go func() {
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()
 
 	r.POST("/snatch", router.SnatchHandler)
 	r.POST("/open", router.OpenHandler)

@@ -158,7 +158,13 @@ func GetEnvelopeValue(remain_money int64, min_money, max_money, remain_envelope 
 }
 
 func (eg *EnvelopeGenerator) GetEnvelope() (int64, int32) {
-	// return middleware.GetRedis().Incr("LastEnvelopeID").Val(), 1
+	// // return middleware.GetRedis().Incr("LastEnvelopeID").Val(), 1
+	// eid := eg.rdb.Incr("LastEnvelopeID").Val()
+	// // if eg.cfg.TotalMoney == 0 || eg.cfg.TotalEnvelope == 0 {
+	// eg.RequestEnvelopeNextBatch()
+	// // }
+	// value := GetEnvelopeValue(100000, int32(eg.cfg.MinMoney), int32(eg.cfg.MaxMoney), 1000)
+	// return eid, value
 
 	for true {
 		eg.valueCacheRWLock.RLock()
